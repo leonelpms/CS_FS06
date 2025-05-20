@@ -1,0 +1,77 @@
+﻿@page "/fetchproducts"
+@using System.Text.Json
+@inject HttpClient Http
+
+<h3>Product List</h3>                   
+
+@if (!string.IsNullOrEmpty(errorMessage))
+{
+    <div class="alert alert-danger">@errorMessage</div>
+}
+
+<ul>
+    @if (products != null)
+    {
+        foreach (var product in products)
+        {
+            <li>
+                @product.id - @product.name - $@product.price - @product.stock
+                <span style="color:gray;">
+                    (@product.category.id =>  @product.category?.name)
+                </span>
+
+            </li>
+        }
+    }
+    else if (string.IsNullOrEmpty(errorMessage))
+    {
+        <li>Loading...</li>
+    }
+</ul>
+
+@code {
+    private Product[]? products;
+    private string? errorMessage;
+
+    protected override async Task OnInitializedAsync()
+    {
+        try
+        {
+            var response = await Http.GetAsync("https://localhost:7043/api/productlist");
+            response.EnsureSuccessStatusCode();
+            var json = await response.Content.ReadAsStringAsync();
+            products = JsonSerializer.Deserialize<Product[]>(json);
+        }
+        catch (HttpRequestException)
+        {
+            errorMessage = "No se pudo obtener la lista de productos. Verifique la conexión con el servidor.";
+        }
+        catch (TaskCanceledException)
+        {
+            errorMessage = "La solicitud al servidor ha excedido el tiempo de espera.";
+        }
+        catch (JsonException)
+        {
+            errorMessage = "La respuesta del servidor no tiene un formato JSON válido.";
+        }
+        catch (Exception ex)
+        {
+            errorMessage = $"Ocurrió un error inesperado: {ex.Message}";
+        }
+    }
+
+    public class Product
+    {
+        public int id { get; set; }
+        public string name { get; set; } = string.Empty;
+        public double price { get; set; }
+        public int stock { get; set; }
+        public Category? category { get; set; }
+    }
+
+    public class Category
+    {
+        public int id { get; set; }
+        public string name { get; set; } = string.Empty;
+    }
+}
